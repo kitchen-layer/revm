@@ -98,6 +98,10 @@ serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 tokio = "1.40"
+# Added for parallelism
+rayon = { version = "1.6", default-features = false }
+# Added for concurrency control
+crossbeam = { version = "0.8", default-features = false }
 
 # dev-dependencies
 anyhow = "1.0.89"
@@ -112,6 +116,7 @@ serde_derive = "1.0"
 thiserror = "2.0"
 triehash = "0.8"
 walkdir = "2.5"
+
 
 [workspace.package]
 license = "MIT"

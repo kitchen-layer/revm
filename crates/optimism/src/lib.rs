@@ -20,7 +20,9 @@ pub use api::{
     builder::{OpBuilder, OpContext},
     default_ctx::DefaultOp,
 };
+
 pub use evm::OpEvm;
+pub use handler::{parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider};
 pub use l1block::L1BlockInfo;
 pub use result::OpHaltReason;
 pub use spec::*;
