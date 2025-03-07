@@ -9,18 +9,19 @@ mod api;
 mod evm;
 mod handler;
 mod transaction;
-
-use alloc::vec::Vec;
-use bytes::Bytes;
-use primitive_types::{H160, H256, U256};
-use revm_interpreter::InterpreterResult;
+mod parallel;
+mod db;
+mod coordinator;
+mod scheduler;
 
 // Re-export types from modules
-pub use api::exec::OpExecutor;
 pub use evm::OpEvm;
 pub use handler::{
     parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider, OpHandler,
 };
+pub use db::*;
+pub use coordinator::*;
+pub use scheduler::*;
 pub use transaction::OpTxTr;
 
 pub mod bn128;

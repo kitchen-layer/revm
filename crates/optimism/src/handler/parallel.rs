@@ -1,18 +1,15 @@
-use super::operation_logs::{Conflict, OperationLog, SharedOperationLog};
 use super::OpHandler;
-use crate::db::versioned::VersionedStateDB;
+use crate::parallel::operation_logs::{Conflict, OperationLog, SharedOperationLog};
 use crate::transaction::OpTxTr;
-use crate::L1BlockInfo;
-use context::Context;
-use context::{ContextTr, Evm};
-use crossbeam::channel::{bounded, Receiver, Sender};
-use handler::{EvmTr, Frame, Handler};
-use interpreter::{Host, InterpreterResult};
-use metrics::{register_counter, register_gauge, register_histogram, Counter, Gauge, Histogram};
-use primitives::{Address, U256};
+use crate::{L1BlockInfo, VersionedStateDB};
+use revm::context::Context;
+use revm::context_interface::ContextTr;
+use crossbeam_channel::{bounded, Receiver, Sender};
+use revm::database_interface;
+use revm::interpreter::{Host, InterpreterResult};
+use revm::primitives::{Address, U256};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
-use revm_interpreter::InterpreterResult;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -167,32 +164,6 @@ impl PredictiveScheduler {
     }
 }
 
-// Performance metrics for adaptive tuning
-#[derive(Default)]
-struct ExecutionMetrics {
-    batch_execution_times: Histogram,
-    conflict_rate: Gauge,
-    successful_txs: Counter,
-    failed_txs: Counter,
-    reexecuted_txs: Counter,
-    avg_batch_size: Gauge,
-    total_gas_used: Counter,
-}
-
-impl ExecutionMetrics {
-    fn new() -> Self {
-        Self {
-            batch_execution_times: register_histogram!("batch_execution_times"),
-            conflict_rate: register_gauge!("conflict_rate"),
-            successful_txs: register_counter!("successful_txs"),
-            failed_txs: register_counter!("failed_txs"),
-            reexecuted_txs: register_counter!("reexecuted_txs"),
-            avg_batch_size: register_gauge!("avg_batch_size"),
-            total_gas_used: register_counter!("total_gas_used"),
-        }
-    }
-}
-
 // Adaptive batch sizing configuration
 #[derive(Clone)]
 struct BatchConfig {
@@ -312,7 +283,7 @@ impl AdaptiveThreadPool {
         })
     }
 
-    fn adjust_size(&self, performance_history: &PerformanceHistory) {
+    fn adjust_size(&mut self, performance_history: &PerformanceHistory) {
         let (avg_execution_time, avg_conflict_rate) = performance_history.get_average_metrics();
         let current = self.current_size.load(Ordering::Relaxed);
 
@@ -386,7 +357,6 @@ pub struct ParallelExecutionHandler<DB: database_interface::Database> {
     operation_logs: Vec<SharedOperationLog>,
     max_parallel_threads: usize,
     conflict_channel: (Sender<Conflict>, Receiver<Conflict>),
-    metrics: ExecutionMetrics,
     batch_config: BatchConfig,
     performance_history: PerformanceHistory,
     thread_pool: AdaptiveThreadPool,
@@ -405,7 +375,6 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
             operation_logs: Vec::new(),
             max_parallel_threads: max_threads,
             conflict_channel: (conflict_sender, conflict_receiver),
-            metrics: ExecutionMetrics::new(),
             batch_config: BatchConfig::default(),
             performance_history: PerformanceHistory::new(100), // Keep last 100 windows
             thread_pool: AdaptiveThreadPool::new(1, max_threads).unwrap(),

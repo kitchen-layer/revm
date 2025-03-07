@@ -1,10 +1,6 @@
-use crate::context::Context;
-use crate::db::versioned::VersionedStateDB;
-use crate::types::Address;
-use ethers::{
-    providers::JsonRpcClient,
-    types::{BlockNumber, Filter, Log, SyncingStatus, U256},
-};
+use revm::context::Context;
+use revm::database_interface;
+use revm::primitives::{Address, U256};
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock}; // Import the Context struct
 

@@ -8,10 +8,9 @@ use crate::{
     db::versioned::VersionedStateDB,
     scheduler::scheduler::{TransactionScheduler, TransactionSchedulingInfo},
 };
-use context::{ContextTr, Evm};
-use interpreter::{Host, InterpreterResult};
-use metrics::{register_counter, register_gauge, register_histogram};
-use primitives::{Address, U256};
+use revm::context::{ContextTr, Evm};
+use revm::interpreter::{Host, InterpreterResult};
+use revm::primitives::{Address, U256};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,

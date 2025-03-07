@@ -1,6 +1,6 @@
 use super::operation_logs::OperationLog;
-use primitives::{Address, U256};
-use std::collections::{HashMap, HashSet};
+use revm::primitives::{Address, U256};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]

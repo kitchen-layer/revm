@@ -1,6 +1,6 @@
 // src/optimism/db/versioned.rs
-use database_interface::Database;
-use primitives::{Address, B256, U256};
+use revm::database_interface::Database;
+use revm::primitives::{Address, B256, U256};
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]

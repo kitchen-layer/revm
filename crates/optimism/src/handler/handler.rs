@@ -1,7 +1,3 @@
-//!Handler related to Optimism chain
-
-pub mod precompiles;
-
 use crate::{
     constants::{BASE_FEE_RECIPIENT, L1_FEE_RECIPIENT, OPERATOR_FEE_RECIPIENT},
     transaction::{

@@ -22,17 +22,23 @@ rust_2018_idioms = "deny"
 all = "warn"
 
 [dependencies]
+crossbeam.workspace = true
+
 # revm
 revm.workspace = true
 precompile = { workspace = true, features = ["secp256r1"] }
 inspector.workspace = true
 auto_impl.workspace = true
 
+rayon.workspace = true
+
 # static precompile sets.
 once_cell = { workspace = true, features = ["alloc"] }
 
 # Optional
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
+crossbeam-channel = "0.5.14"
+parking_lot = "0.12.3"
 
 [dev-dependencies]
 database.workspace = true

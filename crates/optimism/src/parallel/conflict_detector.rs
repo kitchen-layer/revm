@@ -1,5 +1,5 @@
 use super::operation_logs::{Operation, OperationLog};
-use primitives::{Address, U256};
+use revm::primitives::{Address, U256};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]

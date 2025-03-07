@@ -1,9 +1,9 @@
-use super::conflict_detector::{ConflictDetector, ConflictType};
-use super::operation_logs::OperationLog;
-use ethers::types::{Address, U256};
+use crate::parallel::conflict_detector::{ConflictDetector, ConflictType};
+use crate::parallel::operation_logs::OperationLog;
+use revm::primitives::{Address, U256};
+use core::cmp::Ordering;
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashSet};
-use std::collections::{HashMap, Ordering};
+use std::collections::{BinaryHeap, HashSet, HashMap};
 
 pub struct Scheduler {
     transactions: Vec<TransactionData>,

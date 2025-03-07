@@ -1,9 +1,12 @@
+use crate::VersionedStateDB;
+
 use super::conflict_detector::{ConflictDetector, ConflictType};
 use super::operation_logs::{Operation, OperationLog};
-use crate::db::versioned::VersionedStateDB;
-use context::{ContextTr, Evm};
-use interpreter::{Host, InterpreterResult};
-use primitives::{Address, U256};
+use revm::context::Evm;
+use revm::context_interface::ContextTr;
+use revm::database_interface;
+use revm::interpreter::{Host, InterpreterResult};
+use revm::primitives::{Address, U256};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug)]
