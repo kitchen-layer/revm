@@ -1,4 +1,4 @@
-use super::{
+use crate::parallel::{
     conflict_detector::ConflictDetector,
     operation_logs::{OperationLog, SharedOperationLog},
     predictor::DependencyPredictor,
@@ -8,7 +8,7 @@ use crate::{
     db::versioned::VersionedStateDB,
     scheduler::scheduler::{TransactionScheduler, TransactionSchedulingInfo},
 };
-use revm::context::{ContextTr, Evm};
+use revm::{context::{ContextTr, Evm}, database_interface, primitives::hash_set::HashSet};
 use revm::interpreter::{Host, InterpreterResult};
 use revm::primitives::{Address, U256};
 use rayon::prelude::*;
@@ -42,12 +42,6 @@ pub struct ParallelExecutionCoordinator<DB: database_interface::Database> {
     max_parallel_txs: usize,
     batch_timeout: Duration,
     max_retries: usize,
-
-    // Metrics
-    total_txs_executed: metrics::Counter,
-    total_conflicts: metrics::Counter,
-    avg_execution_time: metrics::Gauge,
-    batch_size_histogram: metrics::Histogram,
 }
 
 impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
@@ -71,10 +65,6 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
             max_parallel_txs,
             batch_timeout,
             max_retries,
-            total_txs_executed: register_counter!("total_txs_executed"),
-            total_conflicts: register_counter!("total_conflicts"),
-            avg_execution_time: register_gauge!("avg_execution_time"),
-            batch_size_histogram: register_histogram!("batch_size"),
         }
     }
 
@@ -119,7 +109,6 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
 
             // Get next batch of transactions
             let batch = self.scheduler.get_next_batch(self.max_parallel_txs);
-            self.batch_size_histogram.record(batch.len() as f64);
 
             // Execute batch in parallel
             let batch_results: Vec<_> = batch
@@ -141,7 +130,6 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
                     }
                 } else {
                     results[*tx_idx] = Some(result);
-                    self.total_txs_executed.increment(1);
                 }
             }
 
@@ -152,7 +140,6 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
 
         // Calculate and update metrics
         let total_time = start_time.elapsed();
-        self.avg_execution_time.set(total_time.as_secs_f64());
 
         Ok(results.into_iter().map(Option::unwrap).collect())
     }
