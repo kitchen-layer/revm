@@ -34,6 +34,9 @@ once_cell = { workspace = true, features = ["alloc"] }
 # Optional
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 
+rayon = { workspace = true, version = "1.6", default-features = false, optional = true}
+crossbeam = { workspace = true, version = "0.8", default-features = false, optional = true}
+
 [dev-dependencies]
 database.workspace = true
 anyhow.workspace = true
