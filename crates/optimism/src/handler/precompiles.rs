@@ -1,4 +1,7 @@
+use crate::transaction::OpTxTr;
+use crate::L1BlockInfo;
 use crate::OpSpecId;
+use context::Context;
 use once_cell::race::OnceBox;
 use precompile::{secp256r1, PrecompileError, Precompiles};
 use revm::{

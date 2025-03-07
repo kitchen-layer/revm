@@ -1,5 +1,9 @@
 use super::operation_logs::{Conflict, OperationLog, SharedOperationLog};
+use super::OpHandler;
 use crate::db::versioned::VersionedStateDB;
+use crate::transaction::OpTxTr;
+use crate::L1BlockInfo;
+use context::Context;
 use context::{ContextTr, Evm};
 use crossbeam::channel::{bounded, Receiver, Sender};
 use handler::{EvmTr, Frame, Handler};
@@ -8,6 +12,7 @@ use metrics::{register_counter, register_gauge, register_histogram, Counter, Gau
 use primitives::{Address, U256};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
+use revm_interpreter::InterpreterResult;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -1013,5 +1018,17 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
         });
 
         Ok(results)
+    }
+}
+
+impl OpHandler for ParallelExecutionHandler<DB> {
+    fn execute_transaction(
+        &mut self,
+        transaction: &OpTxTr,
+        l1_block_info: &L1BlockInfo,
+        context: &mut Context,
+    ) -> InterpreterResult {
+        // Implementation here
+        InterpreterResult::default()
     }
 }

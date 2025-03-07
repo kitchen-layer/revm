@@ -5,24 +5,36 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc as std;
 
-pub mod api;
+mod api;
+mod evm;
+mod handler;
+mod transaction;
+
+use alloc::vec::Vec;
+use bytes::Bytes;
+use primitive_types::{H160, H256, U256};
+use revm_interpreter::InterpreterResult;
+
+// Re-export types from modules
+pub use api::exec::OpExecutor;
+pub use evm::OpEvm;
+pub use handler::{
+    parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider, OpHandler,
+};
+pub use transaction::OpTxTr;
+
 pub mod bn128;
 pub mod constants;
-pub mod evm;
 pub mod fast_lz;
-pub mod handler;
 pub mod l1block;
 pub mod result;
 pub mod spec;
-pub mod transaction;
 
 pub use api::{
     builder::{OpBuilder, OpContext},
     default_ctx::DefaultOp,
 };
 
-pub use evm::OpEvm;
-pub use handler::{parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider};
 pub use l1block::L1BlockInfo;
 pub use result::OpHaltReason;
 pub use spec::*;

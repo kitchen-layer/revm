@@ -1,6 +1,6 @@
+use crate::OpTransactionError;
 use crate::{
     evm::OpEvm, handler::OpHandler, transaction::OpTxTr, L1BlockInfo, OpHaltReason, OpSpecId,
-    OpTransactionError,
 };
 use inspector::{InspectCommitEvm, InspectEvm, Inspector, JournalExt};
 use precompile::Log;
@@ -14,6 +14,7 @@ use revm::{
     state::EvmState,
     Context, DatabaseCommit, ExecuteCommitEvm, ExecuteEvm,
 };
+
 use std::vec::Vec;
 
 impl<BLOCK, TX, CFG, DB, JOURNAL, INSP> ExecuteEvm
