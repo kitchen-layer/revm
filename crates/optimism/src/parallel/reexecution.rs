@@ -13,7 +13,7 @@ use revm::interpreter::{Host, InterpreterResult};
 use revm::primitives::{Address, U256};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReexecutionPoint {
     tx_index: usize,
     op_index: usize,
@@ -23,7 +23,7 @@ pub struct ReexecutionPoint {
     memory_snapshot: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReexecutionPlan {
     points: VecDeque<ReexecutionPoint>,
     affected_addresses: HashSet<Address>,

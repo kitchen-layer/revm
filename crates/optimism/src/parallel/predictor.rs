@@ -44,22 +44,30 @@ impl DependencyPredictor {
         let mut accessed_slots = HashSet::new();
 
         // Analyze operations
-        for op in log.operations() {
-            match op {
-                Operation::Read { address, slot } => {
-                    accessed_addresses.insert(*address);
-                    accessed_slots.insert((*address, *slot));
-                    self.update_storage_pattern(*address, *slot, gas_used, false);
-                }
-                Operation::Write { address, slot, .. } => {
-                    accessed_addresses.insert(*address);
-                    accessed_slots.insert((*address, *slot));
-                    self.update_storage_pattern(*address, *slot, gas_used, true);
-                }
-                Operation::AccountAccess { address } | Operation::CodeAccess { address } => {
-                    accessed_addresses.insert(*address);
-                    self.update_contract_pattern(*address, gas_used);
-                }
+        match log {
+            Operation::Read { address, slot } => {
+                accessed_addresses.insert(Address::from_slice(address.as_slice()));
+                accessed_slots.insert((Address::from_slice(address.as_slice()), slot.clone()));
+                self.update_storage_pattern(
+                    Address::from_slice(address.as_slice()),
+                    slot.clone(),
+                    gas_used,
+                    false,
+                );
+            }
+            Operation::Write { address, slot, .. } => {
+                accessed_addresses.insert(Address::from_slice(address.as_slice()));
+                accessed_slots.insert((Address::from_slice(address.as_slice()), slot.clone()));
+                self.update_storage_pattern(
+                    Address::from_slice(address.as_slice()),
+                    slot.clone(),
+                    gas_used,
+                    true,
+                );
+            }
+            Operation::AccountAccess { address } | Operation::CodeAccess { address } => {
+                accessed_addresses.insert(Address::from_slice(address.as_slice()));
+                self.update_contract_pattern(Address::from_slice(address.as_slice()), gas_used);
             }
         }
 
@@ -113,15 +121,19 @@ impl DependencyPredictor {
     fn update_sequence_patterns(&mut self, addresses: HashSet<Address>) {
         // Add new transaction to history
         if let Some(last_tx) = self.recent_transactions.back() {
-            let sequence: Vec<Address> =
-                last_tx.1.iter().chain(addresses.iter()).copied().collect();
+            let sequence: Vec<Address> = last_tx
+                .1
+                .iter()
+                .cloned()
+                .chain(addresses.iter().cloned())
+                .collect();
 
             *self.sequence_patterns.entry(sequence).or_insert(0) += 1;
         }
 
         // Update recent transactions
         self.recent_transactions.push_back((
-            *addresses.iter().next().unwrap_or(&Address::zero()),
+            *addresses.iter().next().unwrap_or(&Address::default()),
             addresses.into_iter().collect(),
         ));
 
