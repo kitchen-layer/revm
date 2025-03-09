@@ -4,16 +4,9 @@ use crate::parallel::{
     predictor::DependencyPredictor,
     reexecution::PartialReexecutor,
 };
-use crate::TransactionScheduler;
-use crate::VersionedStateDB;
-use crate::{
-    db::versioned::VersionedStateDB,
-    scheduler::scheduler::{TransactionScheduler, TransactionSchedulingInfo},
-};
-use metrics::{register_counter, register_gauge, register_histogram};
+use crate::{db::versioned::VersionedStateDB, scheduler::scheduler::TransactionScheduler};
 use rayon::prelude::*;
 use revm::context::Evm;
-use revm::context::{ContextTr, Evm};
 use revm::database_interface::Database;
 use revm::interpreter::{Host, InterpreterResult};
 use revm::primitives::{Address, U256};

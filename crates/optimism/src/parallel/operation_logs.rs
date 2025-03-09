@@ -204,6 +204,7 @@ pub enum Conflict {
     AccountAccess(Address),
 }
 
+#[derive(Clone)]
 pub struct SharedOperationLog {
     inner: Arc<RwLock<OperationLog>>,
 }
