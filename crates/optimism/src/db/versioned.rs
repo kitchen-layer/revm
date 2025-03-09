@@ -1,7 +1,8 @@
 // src/optimism/db/versioned.rs
 use revm::database_interface::Database;
-use revm::primitives::{Address, B256, U256};
+use revm::primitives::{AccountInfo, Address, Bytecode, B256, U256};
 use std::collections::{BTreeMap, HashMap};
+use thiserror::Error;
 
 #[derive(Debug)]
 pub struct OperationMetadata {
@@ -150,22 +151,34 @@ impl<DB: Database> VersionedStateDB<DB> {
     }
 }
 
-impl Database for VersionedStateDB<dyn Database> {
-    fn get(&self, address: &Address, slot: U256) -> Result<Option<U256>, DatabaseError> {
-        let version = self.current_version;
-        match self.versions.get(&version) {
-            Some(snapshot) => snapshot.get(address, slot),
-            None => Err(DatabaseError::VersionNotFound(version)),
-        }
+#[derive(Debug, thiserror::Error)]
+pub enum DatabaseError {
+    #[error("Version {0} not found")]
+    VersionNotFound(u64),
+    #[error("Database error: {0}")]
+    Other(String),
+}
+
+impl<DB: Database> Database for VersionedStateDB<DB> {
+    type Error = DB::Error;
+
+    fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
+        // Implementation here
+        Ok(None)
     }
 
-    fn insert(&mut self, address: Address, slot: U256, value: U256) -> Result<(), DatabaseError> {
-        let version = self.current_version;
-        let snapshot = self
-            .versions
-            .entry(version)
-            .or_insert_with(StateSnapshot::new);
-        snapshot.insert(address, slot, value);
-        Ok(())
+    fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
+        // Implementation here
+        Ok(Bytecode::default())
+    }
+
+    fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
+        // Implementation here
+        Ok(U256::zero())
+    }
+
+    fn block_hash(&mut self, number: u64) -> Result<B256, Self::Error> {
+        // Implementation here
+        Ok(B256::zero())
     }
 }

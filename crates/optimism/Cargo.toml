@@ -29,6 +29,8 @@ revm.workspace = true
 precompile = { workspace = true, features = ["secp256r1"] }
 inspector.workspace = true
 auto_impl.workspace = true
+thiserror.workspace = true
+metrics.workspace = true
 
 rayon.workspace = true
 

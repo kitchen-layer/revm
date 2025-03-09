@@ -1,9 +1,9 @@
 use crate::parallel::conflict_detector::{ConflictDetector, ConflictType};
 use crate::parallel::operation_logs::OperationLog;
-use revm::primitives::{Address, U256};
 use core::cmp::Ordering;
+use revm::primitives::{Address, U256};
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashSet, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 pub struct Scheduler {
     transactions: Vec<TransactionData>,
@@ -201,7 +201,7 @@ impl TransactionScheduler {
             tx_index,
             gas_price,
             estimated_gas,
-            dependencies,
+            dependencies: dependencies.clone(),
             priority_score,
             waiting_since: std::time::Instant::now(),
         };
@@ -216,7 +216,7 @@ impl TransactionScheduler {
         estimated_gas: u64,
         dependencies: &HashSet<usize>,
     ) -> f64 {
-        let gas_price_factor = gas_price.as_u64() as f64;
+        let gas_price_factor = gas_price.low_u64() as f64;
         let dependency_penalty = 1.0 / (1.0 + dependencies.len() as f64);
         let gas_efficiency = 1.0 / (1.0 + estimated_gas as f64);
 

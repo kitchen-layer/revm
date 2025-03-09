@@ -1,19 +1,24 @@
 use crate::parallel::{
     conflict_detector::ConflictDetector,
-    operation_logs::{OperationLog, SharedOperationLog},
+    operation_logs::{Operation, SharedOperationLog},
     predictor::DependencyPredictor,
     reexecution::PartialReexecutor,
 };
+use crate::TransactionScheduler;
+use crate::VersionedStateDB;
 use crate::{
     db::versioned::VersionedStateDB,
     scheduler::scheduler::{TransactionScheduler, TransactionSchedulingInfo},
 };
-use revm::{context::{ContextTr, Evm}, database_interface, primitives::hash_set::HashSet};
+use metrics::{register_counter, register_gauge, register_histogram};
+use rayon::prelude::*;
+use revm::context::Evm;
+use revm::context::{ContextTr, Evm};
+use revm::database_interface::Database;
 use revm::interpreter::{Host, InterpreterResult};
 use revm::primitives::{Address, U256};
-use rayon::prelude::*;
 use std::{
-    collections::HashMap,
+    collections::HashSet,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -30,7 +35,7 @@ pub struct ExecutionResult {
     pub operations_reexecuted: usize,
 }
 
-pub struct ParallelExecutionCoordinator<DB: database_interface::Database> {
+pub struct ParallelExecutionCoordinator<DB: Database> {
     versioned_db: Arc<parking_lot::RwLock<VersionedStateDB<DB>>>,
     scheduler: TransactionScheduler,
     conflict_detector: ConflictDetector,
@@ -44,9 +49,7 @@ pub struct ParallelExecutionCoordinator<DB: database_interface::Database> {
     max_retries: usize,
 }
 
-impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
-    ParallelExecutionCoordinator<DB>
-{
+impl<DB: Database + Clone + Send + Sync + 'static> ParallelExecutionCoordinator<DB> {
     pub fn new(
         db: DB,
         max_parallel_txs: usize,
@@ -72,9 +75,9 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
         &mut self,
         transactions: Vec<(usize, U256, u64)>, // (tx_index, gas_price, estimated_gas)
         evm: &mut Evm<CTX, INSP, I, P>,
-    ) -> Result<Vec<ExecutionResult>, <DB as database_interface::Database>::Error>
+    ) -> Result<Vec<ExecutionResult>, <DB as Database>::Error>
     where
-        CTX: ContextTr + Host + Clone + Send + Sync + 'static,
+        CTX: Host + Clone + Send + Sync + 'static,
         INSP: Clone + Send + Sync + 'static,
         I: Clone + Send + Sync + 'static,
         P: Clone + Send + Sync + 'static,
@@ -149,9 +152,9 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
         tx_idx: usize,
         mut evm: Evm<CTX, INSP, I, P>,
         timeout: &Arc<AtomicBool>,
-    ) -> Result<ExecutionResult, <DB as database_interface::Database>::Error>
+    ) -> Result<ExecutionResult, <DB as Database>::Error>
     where
-        CTX: ContextTr + Host + Clone,
+        CTX: Host + Clone,
         INSP: Clone,
         I: Clone,
         P: Clone,
@@ -245,9 +248,9 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
         &self,
         tx_idx: usize,
         evm: &mut Evm<CTX, INSP, I, P>,
-    ) -> Result<InterpreterResult, <DB as database_interface::Database>::Error>
+    ) -> Result<InterpreterResult, <DB as Database>::Error>
     where
-        CTX: ContextTr + Host + Clone,
+        CTX: Host + Clone,
         INSP: Clone,
         I: Clone,
         P: Clone,

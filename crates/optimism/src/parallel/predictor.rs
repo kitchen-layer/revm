@@ -1,4 +1,4 @@
-use super::operation_logs::OperationLog;
+use super::operation_logs::Operation;
 use revm::primitives::{Address, U256};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::{Duration, Instant};
@@ -39,7 +39,7 @@ impl DependencyPredictor {
         }
     }
 
-    pub fn analyze_operation_log(&mut self, log: &OperationLog, gas_used: u64) {
+    pub fn analyze_operation_log(&mut self, log: &Operation, gas_used: u64) {
         let mut accessed_addresses = HashSet::new();
         let mut accessed_slots = HashSet::new();
 

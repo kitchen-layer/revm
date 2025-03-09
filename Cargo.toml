@@ -117,6 +117,8 @@ thiserror = "2.0"
 triehash = "0.8"
 walkdir = "2.5"
 
+# Added for metrics
+metrics = "0.20"
 
 [workspace.package]
 license = "MIT"

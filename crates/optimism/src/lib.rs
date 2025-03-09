@@ -6,21 +6,21 @@
 extern crate alloc as std;
 
 mod api;
+pub mod coordinator;
+mod db;
 mod evm;
 mod handler;
-mod transaction;
 mod parallel;
-mod db;
-mod coordinator;
-mod scheduler;
+pub mod scheduler;
+mod transaction;
 
 // Re-export types from modules
+pub use coordinator::*;
+pub use db::*;
 pub use evm::OpEvm;
 pub use handler::{
     parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider, OpHandler,
 };
-pub use db::*;
-pub use coordinator::*;
 pub use scheduler::*;
 pub use transaction::OpTxTr;
 
