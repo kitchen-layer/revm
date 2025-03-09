@@ -71,9 +71,11 @@ impl<DB: Database> VersionedStateDB<DB> {
         while current > 0 {
             if let Some(snapshot) = self.versions.get(&current) {
                 if let Some(value) = snapshot.storage_changes.get(&(address, slot)) {
+                    // Store the current value before mutable borrow
+                    let return_value = *value;
                     // Update metadata
                     self.update_read_metadata(address, slot, current);
-                    return Ok(*value);
+                    return Ok(return_value);
                 }
                 current = snapshot.parent_version;
             }

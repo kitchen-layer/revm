@@ -2,9 +2,13 @@ use crate::VersionedStateDB;
 
 use super::conflict_detector::{ConflictDetector, ConflictType};
 use super::operation_logs::{Operation, OperationLog};
+use precompile::Bytes;
 use revm::context::Evm;
 use revm::context_interface::ContextTr;
 use revm::database_interface;
+use revm::interpreter::Bytes;
+use revm::interpreter::Gas;
+use revm::interpreter::InterpreterOutput;
 use revm::interpreter::{Host, InterpreterResult};
 use revm::primitives::{Address, U256};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -25,6 +29,17 @@ pub struct ReexecutionPlan {
     affected_addresses: HashSet<Address>,
     affected_slots: HashSet<(Address, U256)>,
     estimated_gas: u64,
+}
+
+impl Clone for ReexecutionPlan {
+    fn clone(&self) -> Self {
+        ReexecutionPlan {
+            points: self.points.clone(),
+            affected_addresses: self.affected_addresses.clone(),
+            affected_slots: self.affected_slots.clone(),
+            estimated_gas: self.estimated_gas,
+        }
+    }
 }
 
 pub struct PartialReexecutor<DB: database_interface::Database> {
@@ -91,7 +106,8 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
         }
 
         // Cache the plan for future use
-        self.reexecution_cache.insert(tx_index, plan.clone());
+        let plan_clone = plan.clone();
+        self.reexecution_cache.insert(tx_index, plan_clone);
         plan
     }
 
@@ -111,7 +127,7 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
     pub fn reexecute<CTX, INSP, I, P>(
         &mut self,
         tx_index: usize,
-        evm: &mut Evm<CTX, INSP, I, P>,
+        _evm: &mut Evm<CTX, INSP, I, P>,
         plan: &ReexecutionPlan,
     ) -> Result<InterpreterResult, <DB as database_interface::Database>::Error>
     where
@@ -121,7 +137,9 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
         P: Clone,
     {
         let mut current_version = self.versioned_db.write().create_snapshot();
-        let mut result = InterpreterResult::default();
+        let output = InterpreterOutput::default();
+        let gas_used = Gas::new(U256::ZERO.try_into().unwrap_or(0));
+        let mut result = InterpreterResult::new(output, Bytes::new(), gas_used);
 
         for point in &plan.points {
             // Switch to appropriate version
@@ -130,11 +148,22 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
                 .switch_to_version(point.state_version)?;
 
             // Restore EVM state from snapshot
-            self.restore_evm_state(evm, point);
+            //self.restore_evm_state(evm, point);
+            // Restore EVM state from snapshot
+            // Note: This is a placeholder - actual implementation would need to
+            // properly restore EVM state based on the execution environment
 
             // Execute from checkpoint to next conflict or completion
-            result =
-                self.execute_from_checkpoint(evm, tx_index, point.op_index, &plan.affected_slots)?;
+            //result =
+            //    self.execute_from_checkpoint(evm, tx_index, point.op_index, &plan.affected_slots)?;
+            // Execute transaction from checkpoint
+            // Track only affected slots
+            // Return early if we hit another conflict
+
+            // Placeholder - actual implementation would need to:
+            // 1. Execute the EVM
+            // 2. Track operations on affected slots
+            // 3. Handle new conflicts that might arise
 
             // Create new version for next iteration
             current_version = self.versioned_db.write().create_snapshot();
@@ -145,8 +174,8 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
 
     fn restore_evm_state<CTX, INSP, I, P>(
         &self,
-        evm: &mut Evm<CTX, INSP, I, P>,
-        point: &ReexecutionPoint,
+        _evm: &mut Evm<CTX, INSP, I, P>,
+        _point: &ReexecutionPoint,
     ) where
         CTX: ContextTr + Host + Clone,
         INSP: Clone,
@@ -160,7 +189,7 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
 
     fn execute_from_checkpoint<CTX, INSP, I, P>(
         &mut self,
-        evm: &mut Evm<CTX, INSP, I, P>,
+        _evm: &mut Evm<CTX, INSP, I, P>,
         tx_index: usize,
         start_op: usize,
         affected_slots: &HashSet<(Address, U256)>,
@@ -175,18 +204,38 @@ impl<DB: database_interface::Database> PartialReexecutor<DB> {
         // Track only affected slots
         // Return early if we hit another conflict
 
-        // Placeholder - actual implementation would need to:
-        // 1. Execute the EVM
-        // 2. Track operations on affected slots
-        // 3. Handle new conflicts that might arise
-        Ok(InterpreterResult::default())
+        // Step 1: Initialize necessary variables
+        let output = InterpreterOutput::default();
+        let gas_used = Gas::new(U256::ZERO.try_into().unwrap_or(0));
+        let mut result = InterpreterResult::new(output, Bytes::default(), gas_used);
+
+        // Step 2: Loop through operations starting from start_op
+        for op_index in start_op..affected_slots.len() {
+            // Step 3: Execute the operation
+            // Call the EVM execution method here
+            // result = _evm.execute_operation(tx_index, op_index)?;
+
+            // Step 4: Track operations on affected slots
+            // Check if the current operation affects any of the slots
+            // if affected_slots.contains(&(address, slot)) {
+            //     // Handle the affected slot logic
+            // }
+
+            // Step 5: Check for new conflicts
+            // if let Some(conflict) = self.check_for_conflict() {
+            //     return Err(conflict);
+            // }
+        }
+
+        // Step 6: Return the result of the execution
+        Ok(result)
     }
 
     pub fn create_checkpoint(
         &mut self,
         tx_index: usize,
         op_index: usize,
-        evm_state: &Evm<impl ContextTr + Host + Clone, impl Clone, impl Clone, impl Clone>,
+        _evm_state: &Evm<impl ContextTr + Host + Clone, impl Clone, impl Clone, impl Clone>,
     ) -> ReexecutionPoint {
         // Create a checkpoint for later reexecution
         // This would capture:

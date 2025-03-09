@@ -216,7 +216,7 @@ impl TransactionScheduler {
         estimated_gas: u64,
         dependencies: &HashSet<usize>,
     ) -> f64 {
-        let gas_price_factor = gas_price.low_u64() as f64;
+        let gas_price_factor = gas_price.try_into().unwrap_or(0) as f64;
         let dependency_penalty = 1.0 / (1.0 + dependencies.len() as f64);
         let gas_efficiency = 1.0 / (1.0 + estimated_gas as f64);
 
