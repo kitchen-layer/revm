@@ -243,4 +243,16 @@ impl SharedOperationLog {
             inner: Arc::clone(&self.inner),
         }
     }
+
+    pub fn read(&self) -> std::sync::LockResult<std::sync::RwLockReadGuard<'_, OperationLog>> {
+        self.inner.read()
+    }
+
+    pub fn write(&self) -> std::sync::LockResult<std::sync::RwLockWriteGuard<'_, OperationLog>> {
+        self.inner.write()
+    }
+
+    pub fn tx_index(&self) -> usize {
+        self.inner.read().unwrap().tx_index
+    }
 }

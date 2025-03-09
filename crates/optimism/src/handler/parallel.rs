@@ -191,8 +191,8 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
     fn check_conflicts(&self, op_log: &SharedOperationLog) -> Option<Conflict> {
         // Compare against all previous operation logs
         for prev_log in &self.operation_logs {
-            if let Ok(current_log) = op_log.inner.read() {
-                if let Ok(prev_log) = prev_log.inner.read() {
+            if let Ok(current_log) = op_log.read() {
+                if let Ok(prev_log) = prev_log.read() {
                     if let Some(conflict) = current_log.detect_conflicts(&prev_log) {
                         return Some(conflict);
                     }
@@ -206,7 +206,14 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
         &mut self,
         results: &[(usize, InterpreterResult)],
     ) -> Result<Vec<InterpreterResult>, <DB as database_interface::Database>::Error> {
-        let mut final_results = vec![InterpreterResult::default(); results.len()];
+        let mut final_results = vec![
+            InterpreterResult::new(
+                revm::primitives::InstructionResult::Continue,
+                revm::primitives::Bytes::default(),
+                0,
+            );
+            results.len()
+        ];
         let mut conflicts = Vec::new();
 
         // Collect all conflicts
@@ -273,7 +280,7 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
     fn find_conflicting_logs(&self, address: &Address, slot: &U256) -> Option<Vec<usize>> {
         let mut conflicting_txs = Vec::new();
         for log in &self.operation_logs {
-            if let Ok(op_log) = log.inner.read() {
+            if let Ok(op_log) = log.read() {
                 if op_log.accessed_slots.contains(&(*address, *slot)) {
                     conflicting_txs.push(op_log.tx_index());
                 }
@@ -285,7 +292,7 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
     fn find_conflicting_account_logs(&self, address: &Address) -> Option<Vec<usize>> {
         let mut conflicting_txs = Vec::new();
         for log in &self.operation_logs {
-            if let Ok(op_log) = log.inner.read() {
+            if let Ok(op_log) = log.read() {
                 if op_log.accessed_accounts.contains(address) {
                     conflicting_txs.push(op_log.tx_index());
                 }
@@ -361,7 +368,7 @@ impl<DB: database_interface::Database + Clone + Send + Sync + 'static>
 
             // Clear previous operation log
             if let Some(log) = self.operation_logs.get(tx_idx) {
-                if let Ok(mut op_log) = log.inner.write() {
+                if let Ok(mut op_log) = log.write() {
                     *op_log = OperationLog::new(tx_idx, current_version);
                 }
             }

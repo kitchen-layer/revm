@@ -126,7 +126,7 @@ impl<DB: Database + Clone + Send + Sync + 'static> ParallelExecutionCoordinator<
                         .increment(result.conflicts_resolved as u64);
                     // Update predictor with conflict information
                     if let Some(log) = self.operation_logs.get(*tx_idx) {
-                        if let Ok(op_log) = log.inner.read() {
+                        if let Ok(op_log) = log.read() {
                             self.predictor
                                 .analyze_operation_log(&op_log, result.gas_used);
                         }
@@ -168,7 +168,7 @@ impl<DB: Database + Clone + Send + Sync + 'static> ParallelExecutionCoordinator<
 
         // Check for conflicts
         if let Some(log) = self.operation_logs.get(tx_idx) {
-            if let Ok(op_log) = log.inner.read() {
+            if let Ok(op_log) = log.read() {
                 let conflicts = self.conflict_detector.detect_conflicts(tx_idx);
                 if !conflicts.is_empty() {
                     // Handle conflicts through partial re-execution
@@ -199,7 +199,7 @@ impl<DB: Database + Clone + Send + Sync + 'static> ParallelExecutionCoordinator<
         let mut deps = HashSet::new();
 
         if let Some(log) = self.operation_logs.get(tx_idx) {
-            if let Ok(op_log) = log.inner.read() {
+            if let Ok(op_log) = log.read() {
                 let accessed_addresses: HashSet<_> = op_log
                     .operations()
                     .iter()
@@ -230,7 +230,7 @@ impl<DB: Database + Clone + Send + Sync + 'static> ParallelExecutionCoordinator<
         self.operation_logs
             .iter()
             .find(|log| {
-                if let Ok(op_log) = log.inner.read() {
+                if let Ok(op_log) = log.read() {
                     op_log.operations().iter().any(|op| match op {
                         Operation::Read { address: a, .. }
                         | Operation::Write { address: a, .. }
