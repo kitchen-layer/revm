@@ -57,12 +57,12 @@ impl ConflictDetector {
                     self.record_operation(*address, *slot, tx_idx, op_idx, true);
                 }
                 Operation::AccountAccess { address } => {
-                    read_set.insert((*address, U256::zero()));
-                    self.record_operation(*address, U256::zero(), tx_idx, op_idx, false);
+                    read_set.insert((*address, U256::ZERO));
+                    self.record_operation(*address, U256::ZERO, tx_idx, op_idx, false);
                 }
                 Operation::CodeAccess { address } => {
-                    read_set.insert((*address, U256::zero()));
-                    self.record_operation(*address, U256::zero(), tx_idx, op_idx, false);
+                    read_set.insert((*address, U256::ZERO));
+                    self.record_operation(*address, U256::ZERO, tx_idx, op_idx, false);
                 }
             }
         }
@@ -202,14 +202,14 @@ mod tests {
         // Create two operation logs with conflicting operations
         let mut log1 = OperationLog::new(0, 1);
         log1.record_write(
-            Address::zero(),
+            Address::default(),
             U256::from(1),
             U256::from(100),
-            U256::zero(),
+            U256::from(0),
         );
 
         let mut log2 = OperationLog::new(1, 1);
-        log2.record_read(Address::zero(), U256::from(1));
+        log2.record_read(Address::default(), U256::from(1));
 
         detector.analyze_operation_log(&log1);
         detector.analyze_operation_log(&log2);

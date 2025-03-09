@@ -35,25 +35,33 @@ pub struct OperationLog {
     read_count: usize,
     write_count: usize,
     account_access_count: usize,
+    reads: Arc<RwLock<Vec<(Address, U256)>>>,
+    writes: Arc<RwLock<Vec<(Address, U256, U256)>>>,
 }
 
 impl<'a, BLOCK, TX, CFG, DB, JOURNAL> OperationLog<'a, BLOCK, TX, CFG, DB, JOURNAL> {
     pub fn new(context: &'a Context<BLOCK, TX, CFG, DB, JOURNAL>) -> Self {
         Self {
-            reads: Arc::new(RwLock::new(Vec::new())),
-            writes: Arc::new(RwLock::new(Vec::new())),
+            operations: Vec::new(),
+            accessed_slots: HashSet::new(),
+            accessed_accounts: HashSet::new(),
             version: 0,
             tx_index: 0,
+            read_count: 0,
+            write_count: 0,
+            account_access_count: 0,
+            reads: Arc::new(RwLock::new(Vec::new())),
+            writes: Arc::new(RwLock::new(Vec::new())),
             context,
         }
     }
 
     pub fn record_read(&self, address: Address, slot: U256) {
-        self.reads.write().unwrap().push((address, slot));
+        self.reads.read().unwrap().push((address, slot));
     }
 
     pub fn record_write(&self, address: Address, slot: U256, value: U256) {
-        self.writes.write().unwrap().push((address, slot, value));
+        self.writes.read().unwrap().push((address, slot, value));
     }
 
     pub fn get_block_info(&self) -> &BLOCK {
@@ -110,6 +118,8 @@ impl OperationLog {
             read_count: 0,
             write_count: 0,
             account_access_count: 0,
+            reads: Arc::new(RwLock::new(Vec::new())),
+            writes: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
