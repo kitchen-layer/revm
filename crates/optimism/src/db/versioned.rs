@@ -1,7 +1,9 @@
 // src/optimism/db/versioned.rs
-use revm::database_interface::Database;
-use revm::primitives::{AccountInfo, Address, Bytecode, B256, U256};
-use std::collections::{BTreeMap, HashMap};
+use revm::database_interface::{Database, DatabaseCommit};
+use revm::primitives::hash_map::HashMap;
+use revm::primitives::{Address, B256, U256};
+use revm::state::{Account, AccountInfo, Bytecode, EvmStorageSlot};
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -33,6 +35,16 @@ pub struct VersionedStateDB<DB: Database> {
     operation_metadata: HashMap<(Address, U256), OperationMetadata>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum VersionedStateDBError {
+    #[error("Version {0} not found")]
+    VersionNotFound(u64),
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+    #[error("No active version")]
+    NoActiveVersion,
+}
+
 impl<DB: Database> VersionedStateDB<DB> {
     pub fn new(database: DB) -> Self {
         Self {
@@ -56,15 +68,19 @@ impl<DB: Database> VersionedStateDB<DB> {
         new_version
     }
 
-    pub fn switch_to_version(&mut self, version: u64) -> Result<(), DB::Error> {
+    pub fn switch_to_version(&mut self, version: u64) -> Result<(), VersionedStateDBError> {
         if !self.versions.contains_key(&version) {
-            return Err(DB::Error::Custom("Version does not exist".into()));
+            return Err(VersionedStateDBError::VersionNotFound(version));
         }
         self.current_version = version;
         Ok(())
     }
 
-    pub fn read_storage(&mut self, address: Address, slot: U256) -> Result<U256, DB::Error> {
+    pub fn read_storage(
+        &mut self,
+        address: Address,
+        slot: U256,
+    ) -> Result<U256, VersionedStateDBError> {
         // Check versions from current back to base for the value
         let mut current = self.current_version;
 
@@ -82,7 +98,10 @@ impl<DB: Database> VersionedStateDB<DB> {
         }
 
         // If not found in versions, read from base DB
-        let value = self.base.storage(address, slot)?;
+        let value = self
+            .base
+            .storage(address, slot)
+            .map_err(|e| VersionedStateDBError::DatabaseError(e.to_string()))?;
         self.update_read_metadata(address, slot, 0);
         Ok(value)
     }
@@ -92,13 +111,13 @@ impl<DB: Database> VersionedStateDB<DB> {
         address: Address,
         slot: U256,
         value: U256,
-    ) -> Result<(), DB::Error> {
+    ) -> Result<(), VersionedStateDBError> {
         if let Some(snapshot) = self.versions.get_mut(&self.current_version) {
             snapshot.storage_changes.insert((address, slot), value);
             self.update_write_metadata(address, slot, self.current_version);
             Ok(())
         } else {
-            Err(DB::Error::Custom("No active version".into()))
+            Err(VersionedStateDBError::NoActiveVersion)
         }
     }
 
@@ -134,31 +153,56 @@ impl<DB: Database> VersionedStateDB<DB> {
         metadata.is_hot_slot = metadata.access_count > 10;
     }
 
-    pub fn commit_version(&mut self, version: u64) -> Result<(), DB::Error> {
+    pub fn commit_version(&mut self, version: u64) -> Result<(), VersionedStateDBError>
+    where
+        DB: DatabaseCommit,
+    {
         if let Some(snapshot) = self.versions.remove(&version) {
-            // Apply storage changes to base DB
+            // Group storage changes by address to minimize database commits
+            let mut storage_changes: HashMap<Address, Vec<(U256, U256)>> = HashMap::new();
             for ((address, slot), value) in snapshot.storage_changes {
-                self.base.set_storage(address, slot, value)?;
+                storage_changes
+                    .entry(address)
+                    .or_default()
+                    .push((slot, value));
+            }
+
+            // Apply storage changes to base DB, grouped by address
+            for (address, slots) in storage_changes {
+                let mut account = Account::default();
+                // Update storage slots for this account
+                for (slot, value) in slots {
+                    account.storage.insert(slot, EvmStorageSlot::new(value));
+                }
+
+                // Commit the account with its storage changes
+                self.base.commit([(address, account)].into())
             }
 
             // Apply account changes
-            for (address, account) in snapshot.account_changes {
-                // Implementation needed for account updates
-                // This would update balance, nonce, and code hash in the base DB
+            for (address, account_snapshot) in snapshot.account_changes {
+                let mut account = Account::default();
+                account.info = AccountInfo {
+                    balance: account_snapshot.balance,
+                    nonce: account_snapshot.nonce,
+                    code_hash: account_snapshot.code_hash,
+                    code: None, // Code will be loaded on-demand
+                };
+
+                // Commit the account changes
+                self.base.commit([(address, account)].into())
             }
+
+            // Clean up operation metadata for the committed version
+            self.operation_metadata.retain(|_, metadata| {
+                metadata.last_read_version != version && metadata.last_write_version != version
+            });
+
             Ok(())
         } else {
-            Err(DB::Error::Custom("Version not found".into()))
+            Err(VersionedStateDBError::VersionNotFound(version))
         }
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum DatabaseError {
-    #[error("Version {0} not found")]
-    VersionNotFound(u64),
-    #[error("Database error: {0}")]
-    Other(String),
 }
 
 impl<DB: Database> Database for VersionedStateDB<DB> {
@@ -176,11 +220,11 @@ impl<DB: Database> Database for VersionedStateDB<DB> {
 
     fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
         // Implementation here
-        Ok(U256::zero())
+        Ok(U256::from(0))
     }
 
     fn block_hash(&mut self, number: u64) -> Result<B256, Self::Error> {
         // Implementation here
-        Ok(B256::zero())
+        Ok(B256::default())
     }
 }

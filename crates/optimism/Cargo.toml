@@ -33,6 +33,7 @@ thiserror.workspace = true
 metrics.workspace = true
 
 rayon.workspace = true
+anyhow.workspace = true
 
 # static precompile sets.
 once_cell = { workspace = true, features = ["alloc"] }
