@@ -5,23 +5,15 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc as std;
 
-mod api;
-pub mod coordinator;
+pub mod api;
 mod db;
-mod evm;
+pub mod evm;
 mod handler;
-mod parallel;
-pub mod scheduler;
-mod transaction;
+pub mod transaction;
 
 // Re-export types from modules
-pub use coordinator::*;
 pub use db::*;
 pub use evm::OpEvm;
-pub use handler::{
-    parallel::ParallelExecutionHandler, precompiles::OpPrecompileProvider, OpHandler,
-};
-pub use scheduler::*;
 pub use transaction::OpTxTr;
 
 pub mod bn128;
@@ -40,3 +32,5 @@ pub use l1block::L1BlockInfo;
 pub use result::OpHaltReason;
 pub use spec::*;
 pub use transaction::{error::OpTransactionError, estimate_tx_compressed_size, OpTransaction};
+
+pub use handler::{precompiles::OpPrecompileProvider, OpHandler};
