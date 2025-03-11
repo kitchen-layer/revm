@@ -378,9 +378,9 @@ mod tests {
     > {
         // Create a real context with necessary parameters
         let db = VersionedStateDB::new(CacheDB::new(EmptyDBTyped::new()));
-        let spec = SpecId::CANCUN;
+        let spec = SpecId::default();
         let journaled_state = revm::JournaledState::new(spec, db);
-        Context::new(db)
+        Context::new(db, spec);
     }
 
     #[test]
