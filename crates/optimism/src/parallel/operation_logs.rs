@@ -356,3 +356,163 @@ impl<'a, BLOCK, TX, CFG, DB: revm::Database, JOURNAL: Journal<Database = DB>>
         self.inner.read().unwrap().tx_index
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use revm::primitives::{Address, U256};
+    use std::str::FromStr;
+
+    use crate::db::versioned::VersionedStateDB;
+    use revm::database::CacheDB;
+    use revm::database::EmptyDBTyped;
+    use revm::specification::hardfork::SpecId;
+
+    // Helper function to create a real context
+    fn create_test_context() -> Context<
+        (),
+        (),
+        (),
+        VersionedStateDB<CacheDB<EmptyDBTyped<()>>>,
+        revm::JournaledState<VersionedStateDB<CacheDB<EmptyDBTyped<()>>>>,
+    > {
+        // Create a real context with necessary parameters
+        let db = VersionedStateDB::new(CacheDB::new(EmptyDBTyped::new()));
+        let spec = SpecId::CANCUN;
+        let journaled_state = revm::JournaledState::new(spec, db);
+        Context::new(db)
+    }
+
+    #[test]
+    fn test_basic_operation_recording() -> Result<()> {
+        let context = create_test_context();
+        let mut log = OperationLog::new(0, 64, &context);
+
+        let addr = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let slot = U256::from(1);
+        let value = U256::from(100);
+        let original_value = U256::from(0);
+
+        // Test read recording
+        log.record_read_versioned(addr, slot, &context.db)?;
+        assert_eq!(log.read_count, 1);
+
+        // Test write recording
+        log.record_write_versioned(addr, slot, value, original_value)?;
+        assert_eq!(log.write_count, 1);
+
+        // Test account access recording
+        log.record_account_access(addr);
+        assert_eq!(log.account_access_count, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_conflict_detection() -> Result<()> {
+        let context = create_test_context();
+        let mut log = OperationLog::new(0, 64, &context);
+
+        let addr = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let slot = U256::from(1);
+        let value = U256::from(100);
+        let original_value = U256::from(0);
+
+        // Record read and write to same slot
+        log.record_read_versioned(addr, slot, &context.db)?;
+        log.record_write_versioned(addr, slot, value, original_value)?;
+
+        let conflicts = log.check_conflicts();
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0], (addr, slot));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_validation_and_finalization() -> Result<()> {
+        let context = create_test_context();
+        let mut log = OperationLog::new(0, 64, &context);
+
+        let addr = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let slot = U256::from(1);
+        let value = U256::from(100);
+        let original_value = U256::from(0);
+
+        // Record operations in valid order
+        log.record_read_versioned(addr, slot, &context.db)?;
+        log.record_write_versioned(addr, slot, value, original_value)?;
+
+        // Validate and finalize
+        assert!(log.validate().is_ok());
+        assert!(log.finalize().is_ok());
+
+        // Attempt to record after finalization
+        assert!(log.record_read_versioned(addr, slot, &context.db).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_shared_operation_log() -> Result<()> {
+        let context = create_test_context();
+        let shared_log = SharedOperationLog::new(&context);
+
+        let addr = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let slot = U256::from(1);
+        let value = U256::from(100);
+
+        // Test concurrent access
+        let shared_log_clone = shared_log.clone();
+
+        // Record operations from different threads
+        let handle = std::thread::spawn(move || {
+            shared_log_clone.record_read(addr, slot).unwrap();
+        });
+
+        shared_log.record_write(addr, slot, value)?;
+        handle.join().unwrap();
+
+        // Verify the operations were recorded
+        let log = shared_log.read().unwrap();
+        let conflicts = log.check_conflicts();
+        assert_eq!(conflicts.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_operations() -> Result<()> {
+        let context = create_test_context();
+        let mut log = OperationLog::new(0, 64, &context);
+
+        let addr = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let slot = U256::from(1);
+
+        // First read should succeed
+        log.record_read_versioned(addr, slot, &context.db)?;
+
+        // Second read to same slot should fail
+        assert!(log.record_read_versioned(addr, slot, &context.db).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_version_management() -> Result<()> {
+        let context = create_test_context();
+        let mut log = OperationLog::new(0, 64, &context);
+
+        // Set initial version
+        log.set_version(1)?;
+        assert_eq!(log.version(), 1);
+
+        // Finalize the log
+        log.finalize()?;
+
+        // Attempt to change version after finalization
+        assert!(log.set_version(2).is_err());
+
+        Ok(())
+    }
+}

@@ -4,7 +4,6 @@ use revm::primitives::hash_map::HashMap;
 use revm::primitives::{Address, B256, U256};
 use revm::state::{Account, AccountInfo, Bytecode, EvmStorageSlot};
 use std::collections::BTreeMap;
-use thiserror::Error;
 
 #[derive(Debug)]
 pub struct OperationMetadata {
@@ -209,22 +208,21 @@ impl<DB: Database> Database for VersionedStateDB<DB> {
     type Error = DB::Error;
 
     fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
-        // Implementation here
-        Ok(None)
+        self.base.basic(address)
     }
 
     fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
-        // Implementation here
-        Ok(Bytecode::default())
+        self.base.code_by_hash(code_hash)
     }
 
     fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
-        // Implementation here
-        Ok(U256::from(0))
+        match self.read_storage(address, index) {
+            Ok(value) => Ok(value),
+            Err(e) => panic!("Unexpected error type: {:?}", e), // Or handle other errors as needed
+        }
     }
 
     fn block_hash(&mut self, number: u64) -> Result<B256, Self::Error> {
-        // Implementation here
-        Ok(B256::default())
+        self.base.block_hash(number)
     }
 }

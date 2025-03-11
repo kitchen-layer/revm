@@ -9,6 +9,7 @@ pub mod api;
 mod db;
 pub mod evm;
 mod handler;
+pub mod parallel;
 pub mod transaction;
 
 // Re-export types from modules
@@ -29,8 +30,9 @@ pub use api::{
 };
 
 pub use l1block::L1BlockInfo;
+pub use parallel::precompiles::OpPrecompileProvider;
 pub use result::OpHaltReason;
 pub use spec::*;
 pub use transaction::{error::OpTransactionError, estimate_tx_compressed_size, OpTransaction};
 
-pub use handler::{precompiles::OpPrecompileProvider, OpHandler};
+pub use handler::OpHandler;

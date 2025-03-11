@@ -8,7 +8,7 @@ use revm::{
     interpreter::{interpreter::EthInterpreter, Host, Interpreter, InterpreterAction},
 };
 
-use crate::handler::precompiles::OpPrecompileProvider;
+use crate::parallel::precompiles::OpPrecompileProvider;
 
 pub struct OpEvm<CTX, INSP, I = EthInstructions<EthInterpreter, CTX>, P = OpPrecompileProvider<CTX>>(
     pub Evm<CTX, INSP, I, P>,
